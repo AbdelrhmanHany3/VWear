@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" class="scroll-smooth">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Try-On | VWear</title>
+
+    <!-- Import Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+
+    <!-- Import Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Tailwind Configuration -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f5f3ff',
+                            100: '#ede9fe',
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                            900: '#4c1d95',
+                        },
+                        accent: {
+                            500: '#ec4899',
+                            600: '#db2777',
+                        }
+                    },
+                    animation: {
+                        'scan': 'scan 2.5s ease-in-out infinite',
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        scan: {
+                            '0%, 100%': { top: '0%' },
+                            '50%': { top: '100%' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Modern Mesh Gradient Background */
+        .bg-mesh {
+            background-color: #faf5ff;
+            background-image:
+                radial-gradient(at 10% 10%, rgba(139, 92, 246, 0.2) 0px, transparent 50%),
+                radial-gradient(at 90% 10%, rgba(236, 72, 153, 0.2) 0px, transparent 50%),
+                radial-gradient(at 50% 50%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
+                radial-gradient(at 20% 90%, rgba(219, 39, 119, 0.15) 0px, transparent 50%),
+                radial-gradient(at 80% 90%, rgba(124, 58, 237, 0.2) 0px, transparent 50%);
+            background-attachment: fixed;
+            background-size: cover;
+        }
+
+        /* Glassmorphism effect */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Laser Scan Line */
+        .scan-line {
+            position: absolute;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(to right, transparent, #8b5cf6, #ec4899, transparent);
+            box-shadow: 0 0 15px 2px rgba(139, 92, 246, 0.7);
+            z-index: 20;
+        }
+    </style>
+</head>
+
+<body
+    class="font-sans text-gray-800 bg-mesh antialiased min-h-screen flex flex-col selection:bg-brand-500 selection:text-white">
+
+    <nav class="w-full bg-white/50 backdrop-blur-md z-50 border-b border-white/50 h-20 flex-shrink-0">
+        <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex justify-between items-center">
+            <div class="flex items-center gap-6">
+                <a href="dashboard.html"
+                    class="text-gray-500 hover:text-brand-600 transition-colors flex items-center gap-2 font-medium">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                    Back to Dashboard
+                </a>
+                <div class="h-8 w-px bg-gray-300"></div>
+                <div class="flex items-center gap-2">
+                    <div
+                        class="w-8 h-8 bg-gradient-to-br from-brand-600 to-accent-500 rounded-lg flex items-center justify-center text-white font-bold shadow-md">
+                        V</div>
+                    <span class="font-bold text-xl tracking-tight text-gray-900">V<span
+                            class="text-brand-600">Wear</span></span>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <div class="text-right hidden sm:block">
+                    <p id="nav-username" class="text-sm font-bold text-gray-900">Loading...</p>
+                    <p id="nav-role" class="text-xs text-brand-600 font-medium">...</p>
+                </div>
+                <img id="nav-avatar" src="https://ui-avatars.com/api/?name=User&background=8b5cf6&color=fff" alt="User"
+                    class="w-10 h-10 rounded-full border-2 border-white shadow-sm">
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Workspace -->
+    <main class="flex-grow max-w-screen-2xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col lg:flex-row gap-8">
+
+        <!-- Left Panel: Controls (Upload & Select) -->
+        <div class="w-full lg:w-1/3 flex flex-col gap-6">
+
+            <!-- Step 1: Upload Model -->
+            <div class="glass-panel rounded-3xl p-6 relative overflow-hidden group">
+                <div class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-brand-500 to-accent-500"></div>
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                        <span
+                            class="w-7 h-7 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center text-sm">1</span>
+                        Your Photo
+                    </h3>
+                    <div class="flex items-center gap-3">
+                        <button id="use-camera-btn" onclick="openCameraModal()"
+                            class="text-sm text-brand-600 font-semibold hover:underline">Use Camera</button>
+                        <button id="change-photo-btn" onclick="document.getElementById('file-upload').click()"
+                            class="text-sm text-brand-600 font-semibold hover:underline hidden">Change</button>
+                    </div>
+                </div>
+
+                <!-- Hidden File Input -->
+                <input type="file" id="file-upload" class="hidden" accept="image/*" onchange="handleImageUpload(event)">
+
+                <!-- Upload State (Initial) -->
+                <div id="upload-placeholder"
+                    class="w-full h-48 bg-white/50 rounded-2xl overflow-hidden border-2 border-dashed border-brand-300 transition-colors hover:bg-white/80 hover:border-brand-500 flex flex-col items-center justify-center group-hover:shadow-md">
+                    <div onclick="document.getElementById('file-upload').click()"
+                        class="w-14 h-14 bg-brand-100 rounded-full flex items-center justify-center mb-3 text-brand-500 group-hover:scale-110 transition-transform cursor-pointer">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                        </svg>
+                    </div>
+                    <span onclick="document.getElementById('file-upload').click()" class="text-gray-900 font-bold cursor-pointer">Upload Photo</span>
+                    <span class="text-gray-500 text-xs mt-1 font-medium">Upload a photo, or</span>
+                    <button onclick="openCameraModal()" class="text-brand-600 text-xs font-bold mt-1 hover:underline">use your camera instead</button>
+                </div>
+
+                <!-- Uploaded Preview (Hidden Initially) -->
+                <div id="uploaded-preview"
+                    class="relative w-full h-48 rounded-2xl overflow-hidden border border-white/60 shadow-inner group hidden">
+                    <img id="model-image" src="" alt="Model"
+                           class="w-full h-full object-contain object-center transition-transform duration-500 group-hover:scale-105">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent flex items-end p-4">
+                        <p class="text-white text-sm font-medium flex items-center gap-2">
+                            <svg class="w-4 h-4 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                            Body dimensions analyzed
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Select Garment -->
+            <div class="glass-panel rounded-3xl p-6 flex-grow flex flex-col relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-brand-500 to-accent-500"></div>
+                <div class="flex justify-between items-end mb-4">
+                    <h3 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                        <span
+                            class="w-7 h-7 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center text-sm">2</span>
+                        Select Outfit
+                    </h3>
+                    <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Top Wear</span>
+                </div>
+
+                <!-- Garments Grid -->
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <!-- Item 1 -->
+                    <div class="garment-item cursor-pointer rounded-xl overflow-hidden border-2 border-brand-500 shadow-[0_0_15px_rgba(139,92,246,0.3)] relative"
+    onclick="selectGarment(this, 'tshirt')">
+    <div class="absolute top-2 right-2 w-5 h-5 bg-brand-500 rounded-full flex items-center justify-center z-10">
+        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
+                d="M5 13l4 4L19 7"></path>
+        </svg>
+    </div>
+    <img src="http://127.0.0.1:8000/static/assets/00396_00.jpg"
+    alt="T-Shirt" class="w-full h-32 object-contain bg-white">
+</div>
+<!-- Item 2 -->
+<div class="garment-item cursor-pointer rounded-xl overflow-hidden border-2 border-transparent hover:border-white/80 transition-all opacity-70 hover:opacity-100"
+    onclick="selectGarment(this, 'dress')">
+    <img src="http://127.0.0.1:8000/static/assets/03524_00.jpg"
+    alt="Jacket" class="w-full h-32 object-contain bg-white">
+</div>
+<!-- Item 3 -->
+<div class="garment-item cursor-pointer rounded-xl overflow-hidden border-2 border-transparent hover:border-white/80 transition-all opacity-70 hover:opacity-100"
+    onclick="selectGarment(this, 'shirt')">
+    <img src="http://127.0.0.1:8000/static/assets/lower_jeans.png"
+    alt="Shirt" class="w-full h-32 object-contain bg-white">
+</div>
+                    <!-- Item 4 -->
+                    <div id="upload-garment-card"
+                       class="garment-item cursor-pointer rounded-xl overflow-hidden border-2 border-dashed border-gray-300 bg-white/30 flex flex-col items-center justify-center hover:bg-white/50 transition-all">
+                       <svg class="w-8 h-8 text-brand-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4">
+                             </path>
+                       </svg>
+                      <span class="text-xs font-semibold text-gray-600">Upload Yours</span>
+    
+                      <input type="file" id="garment-file-input" accept="image/*" style="display: none;" />
+                    </div>
+                </div>
+
+                <!-- Step 2.5: Garment Type Selector -->
+                <div class="mb-4">
+                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Garment Type</p>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button onclick="selectClothType(this, 'upper')"
+                            class="cloth-type-btn active-type flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 border-brand-500 bg-brand-50 text-brand-700 transition-all">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14c-4 0-8 2-8 4v1h16v-1c0-2-4-4-8-4z"/>
+                            </svg>
+                            <span class="text-xs font-bold">Upper</span>
+                        </button>
+                        <button onclick="selectClothType(this, 'lower')"
+                            class="cloth-type-btn flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 border-gray-200 bg-white/50 text-gray-500 hover:border-brand-300 hover:text-brand-600 transition-all">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                            </svg>
+                            <span class="text-xs font-bold">Lower</span>
+                        </button>
+                        <button onclick="selectClothType(this, 'overall')"
+                            class="cloth-type-btn flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 border-gray-200 bg-white/50 text-gray-500 hover:border-brand-300 hover:text-brand-600 transition-all">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/>
+                            </svg>
+                            <span class="text-xs font-bold">Overall</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Auto-detect suggestion banner (hidden by default) -->
+                <div id="type-suggestion" class="hidden mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
+                    <svg class="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs font-semibold text-amber-800">Looks like a <span id="detected-type-label" class="capitalize"></span> garment</p>
+                        <p class="text-xs text-amber-600 mt-0.5">Switch for better results?</p>
+                    </div>
+                    <button id="suggestion-apply-btn" onclick="applySuggestion()"
+                        class="flex-shrink-0 text-xs font-bold text-white bg-amber-500 hover:bg-amber-600 px-3 py-1.5 rounded-lg transition-colors">
+                        Switch
+                    </button>
+                    <button onclick="dismissSuggestion()"
+                        class="flex-shrink-0 text-amber-400 hover:text-amber-600 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Action Button -->
+                <button id="generate-btn" onclick="startAI()"
+                    class="mt-auto w-full bg-gradient-to-r from-brand-600 to-accent-500 hover:opacity-90 text-white font-bold py-4 rounded-2xl transition-all duration-300 shadow-lg shadow-brand-500/30 flex items-center justify-center gap-2 group transform active:scale-95">
+                    <svg class="w-5 h-5 animate-pulse-slow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z">
+                        </path>
+                    </svg>
+                    Apply Magic Try-On
+                </button>
+            </div>
+        </div>
+
+        <!-- Right Panel: Smart Mirror (Result Display) -->
+        <div
+            class="w-full lg:w-2/3 h-[600px] lg:h-auto glass-panel rounded-3xl p-4 flex flex-col relative overflow-hidden">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-4 px-2">
+                <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                    <svg class="w-6 h-6 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
+                        </path>
+                    </svg>
+                    Smart Mirror
+                </h2>
+                <!-- Tools (Hidden initially) -->
+                <div id="result-tools" class="hidden flex gap-2 z-30">
+                    <!-- Compare Button (Toggle Grid View) -->
+                    <button id="compare-btn" onclick="toggleCompare()"
+                        class="bg-white/80 hover:bg-white text-gray-800 text-sm font-semibold px-4 py-2 rounded-xl shadow-sm border border-gray-100 transition-colors flex items-center gap-2">
+                        <svg id="compare-icon" class="w-4 h-4 text-brand-500" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z">
+                            </path>
+                        </svg>
+                        <span id="compare-text">Compare All Views</span>
+                    </button>
+                    <!-- Download/Save Button -->
+                    <button
+                        class="bg-brand-100 hover:bg-brand-200 text-brand-700 text-sm font-semibold p-2 rounded-xl transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Display Area -->
+            <div
+                class="relative flex-grow bg-white/40 rounded-2xl overflow-hidden border border-white/50 flex items-center justify-center">
+
+                <!-- State 1: Idle/Initial -->
+                <div id="state-idle"
+                    class="absolute inset-0 flex flex-col items-center justify-center text-center p-6 z-10 transition-opacity duration-300">
+                    <div class="w-20 h-20 bg-brand-50 rounded-full flex items-center justify-center mb-4 opacity-50">
+                        <svg class="w-10 h-10 text-brand-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5">
+                            </path>
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-400 mb-2">Ready for Magic</h3>
+                    <p class="text-gray-400 font-medium max-w-sm">Click "Apply Magic Try-On" to see how the selected
+                        outfit looks on you.</p>
+                </div>
+
+                <!-- State 2 & 3: Single Image Container -->
+                <div id="image-container"
+                    class="absolute inset-0 opacity-0 transition-opacity duration-500 z-10 hidden">
+
+                    <!-- View Badge -->
+                    <div id="view-badge"
+                        class="absolute top-4 left-4 bg-brand-600/90 backdrop-blur-sm text-white text-[10px] uppercase tracking-wider font-bold px-3 py-1.5 rounded-lg z-20 shadow-md">
+                        Front View
+                    </div>
+
+                    <!-- Navigation Arrows (Multi-view) -->
+                    <button id="prev-view-btn" onclick="prevView()"
+                        class="absolute left-4 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white backdrop-blur-md text-brand-600 p-2 sm:p-3 rounded-full shadow-lg transition-all z-20 hover:scale-110 active:scale-95">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7">
+                            </path>
+                        </svg>
+                    </button>
+                    <button id="next-view-btn" onclick="nextView()"
+                        class="absolute right-4 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white backdrop-blur-md text-brand-600 p-2 sm:p-3 rounded-full shadow-lg transition-all z-20 hover:scale-110 active:scale-95">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
+                            </path>
+                        </svg>
+                    </button>
+
+                    <!-- Result Image (Active View) -->
+                    <img id="mirror-result" src="assets/frontView.avif" alt="Result View"
+                        class="absolute inset-0 w-full h-full object-contain object-center transition-opacity duration-500">
+                </div>
+
+                <!-- State 4: Compare Grid (All 4 Views) -->
+                <div id="grid-view"
+                    class="absolute inset-0 bg-white/60 backdrop-blur-sm p-3 grid-cols-2 grid-rows-2 gap-3 hidden z-20 overflow-y-auto">
+                    <!-- Front View -->
+                    <div
+                        class="relative rounded-xl overflow-hidden shadow-md border-2 border-brand-400 bg-white group flex items-center justify-center">
+                        <span
+                            class="absolute top-2 left-2 bg-brand-600 text-white text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-md z-10 shadow-sm">Front
+                            View</span>
+                        <img src="assets/frontView.avif" alt="Front"
+                            class="w-full h-full object-contain object-center transition-transform group-hover:scale-105">
+                    </div>
+                    <!-- Back View (Replaced Original) -->
+                    <div
+                        class="relative rounded-xl overflow-hidden shadow-sm border-2 border-white bg-white/50 group flex items-center justify-center">
+                        <span
+                            class="absolute top-2 left-2 bg-gray-800/80 backdrop-blur-sm text-white text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-md z-10 shadow-sm">Back
+                            View</span>
+                        <img src="assets/backView.avif" alt="Back"
+                            class="w-full h-full object-contain object-center transition-transform group-hover:scale-105">
+                    </div>
+                    <!-- Left Side View -->
+                    <div
+                        class="relative rounded-xl overflow-hidden shadow-sm border-2 border-white bg-white/50 group flex items-center justify-center">
+                        <span
+                            class="absolute top-2 left-2 bg-brand-500/80 backdrop-blur-sm text-white text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-md z-10 shadow-sm">Left
+                            Side</span>
+                        <img src="assets/leftView.avif" alt="Left Side"
+                            class="w-full h-full object-contain object-center transition-transform group-hover:scale-105">
+                    </div>
+                    <!-- Right Side View -->
+                    <div
+                        class="relative rounded-xl overflow-hidden shadow-sm border-2 border-white bg-white/50 group flex items-center justify-center">
+                        <span
+                            class="absolute top-2 left-2 bg-brand-500/80 backdrop-blur-sm text-white text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-md z-10 shadow-sm">Right
+                            Side</span>
+                        <img src="assets/rightView.avif" alt="Right Side"
+                            class="w-full h-full object-contain object-center transition-transform group-hover:scale-105">
+                    </div>
+                </div>
+
+                <!-- Loading / Scanning Overlay -->
+                <div id="scan-overlay" class="absolute inset-0 bg-brand-900/10 hidden backdrop-blur-[2px] z-30">
+                    <div class="scan-line animate-scan"></div>
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <div
+                            class="bg-black/80 backdrop-blur-md text-white px-6 py-4 rounded-2xl font-semibold flex items-center gap-3 shadow-2xl border border-white/10">
+                            <svg class="w-5 h-5 animate-spin text-accent-500" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                    stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                </path>
+                            </svg>
+                            <span id="loading-text" class="tracking-wide">Synthesizing fabric...</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Interactive Logic -->
+    <script>
+
+        // 1. المتغيرات العامة عشان نحتفظ بالصورة واللبس اللي اليوزر اختارهم
+        let globalPersonImageFile = null;
+        let globalOutfitUrl = null;
+        let globalOutfitFile = null;
+        let globalClothType = 'upper'; // default
+        let detectedClothType = null;  // اللي الـ AI اكتشفه
+
+        // ============================================================
+        // Cloth Type Selector Logic
+        // ============================================================
+        function selectClothType(btn, type) {
+            globalClothType = type;
+
+            // reset all buttons
+            document.querySelectorAll('.cloth-type-btn').forEach(b => {
+                b.classList.remove('border-brand-500', 'bg-brand-50', 'text-brand-700');
+                b.classList.add('border-gray-200', 'bg-white/50', 'text-gray-500');
+            });
+            btn.classList.add('border-brand-500', 'bg-brand-50', 'text-brand-700');
+            btn.classList.remove('border-gray-200', 'bg-white/50', 'text-gray-500');
+
+            // لو اليوزر اختار نوع مختلف عن اللي الـ detect اكتشفه → وريله warning تاني
+            if (detectedClothType && detectedClothType !== type) {
+                document.getElementById('detected-type-label').textContent = detectedClothType;
+                document.getElementById('type-suggestion').classList.remove('hidden');
+            } else {
+                dismissSuggestion();
+            }
+        }
+
+        // ============================================================
+        // Auto-detect garment type من صورة اللبس
+        // ============================================================
+        // Auto-detect garment type — مجاناً بدون أي API خارجي
+        // بيشتغل بطريقتين:
+        //   1. keyword classifier من اسم الملف/الـ URL (فوري)
+        //   2. لو الاسم مش واضح → بيبعت للباك بتاعنا /detect-garment
+        // ============================================================
+        const UPPER_KEYWORDS  = ['shirt','top','blouse','hoodie','jacket','coat',
+                                  'sweater','tshirt','t-shirt','tee','pullover','vest',
+                                  'cardigan','crop','polo','sweatshirt','upper'];
+        const LOWER_KEYWORDS  = ['pant','trouser','jean','skirt','short','legging',
+                                  'bottom','lower','chino'];
+        const OVERALL_KEYWORDS= ['dress','jumpsuit','overall','romper','suit',
+                                  'gown','bodysuit'];
+
+        function detectFromName(name) {
+            const n = (name || '').toLowerCase();
+            if (UPPER_KEYWORDS.some(k  => n.includes(k))) return 'upper';
+            if (LOWER_KEYWORDS.some(k  => n.includes(k))) return 'lower';
+            if (OVERALL_KEYWORDS.some(k => n.includes(k))) return 'overall';
+            return null;
+        }
+
+        async function detectFromBackend(imageSource) {
+            // بيبعت الصورة للباك اللي بيستخدم الـ SCHP color map للـ detect
+            try {
+                const formData = new FormData();
+                if (imageSource instanceof File) {
+                    formData.append('cloth_image', imageSource);
+                } else {
+                    formData.append('cloth_url', imageSource);
+                }
+                const token = localStorage.getItem('token');
+                const resp  = await fetch('http://127.0.0.1:8000/detect-garment', {
+                    method:  'POST',
+                    headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+                    body:    formData,
+                });
+                if (!resp.ok) return null;
+                const data = await resp.json();
+                return data.cloth_type || null;  // 'upper' | 'lower' | 'overall'
+            } catch {
+                return null;
+            }
+        }
+
+        async function detectGarmentType(imageSource) {
+            // 1. جرّب من الاسم أولاً (فوري، مجاناً)
+            const name = imageSource instanceof File
+                ? imageSource.name
+                : imageSource.split('/').pop();
+
+            const fromName = detectFromName(name);
+            if (fromName) return fromName;
+
+            // 2. لو الاسم مش واضح → اسأل الباك (مجاناً كمان)
+            return await detectFromBackend(imageSource);
+        }
+
+        // ============================================================
+        // Suggestion Banner
+        // ============================================================
+        function showSuggestion(detected) {
+            detectedClothType = detected;
+
+            // لو اللي اتكشف نفس اللي المستخدم اختاره → مفيش مشكلة
+            if (detected === globalClothType) {
+                dismissSuggestion();
+                return;
+            }
+
+            // في تعارض — وريه الـ banner
+            document.getElementById('detected-type-label').textContent = detected;
+            document.getElementById('type-suggestion').classList.remove('hidden');
+        }
+
+        function dismissSuggestion() {
+            document.getElementById('type-suggestion').classList.add('hidden');
+        }
+
+        function applySuggestion() {
+            if (!detectedClothType) return;
+            // ابحث عن الـ button المناسب واضغطه
+            document.querySelectorAll('.cloth-type-btn').forEach(btn => {
+                const label = btn.querySelector('span')?.textContent?.trim().toLowerCase();
+                if (label === detectedClothType) {
+                    selectClothType(btn, detectedClothType);
+                }
+            });
+        }
+
+        const viewData = [
+            { name: "Front View", src: "assets/frontView.avif" },
+            { name: "Back View", src: "assets/backView.avif" },
+            { name: "Left Side View", src: "assets/leftView.avif" },
+            { name: "Right Side View", src: "assets/rightView.avif" }
+        ];
+
+        let currentViewIndex = 0;
+        let isGridMode = false;
+
+        // ============================================================
+        // Image Upload Logic 
+        // ============================================================
+        async function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            useImageFile(file);
+        }
+
+        // Shared by both the file-picker and the camera capture flow
+        function useImageFile(file) {
+            // حفظ الملف عشان نبعته للموديل بعدين
+            globalPersonImageFile = file;
+
+            // عرض الصورة لليوزر
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                document.getElementById('model-image').src = e.target.result;
+                document.getElementById('upload-placeholder').classList.add('hidden');
+                document.getElementById('uploaded-preview').classList.remove('hidden');
+                document.getElementById('change-photo-btn').classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // ============================================================
+        // Camera Capture Logic — live preview + green fit-guide box,
+        // snaps a frame, converts it to a File, then feeds it into the
+        // same useImageFile() path as a normal upload.
+        // ============================================================
+        let cameraStream = null;
+
+        async function openCameraModal() {
+            const modal = document.getElementById('camera-modal');
+            modal.classList.remove('hidden');
+            const video = document.getElementById('camera-feed');
+            try {
+                cameraStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 1280 } },
+                    audio: false
+                });
+                video.srcObject = cameraStream;
+                await video.play();
+            } catch (err) {
+                console.error('Camera error:', err);
+                alert('مقدرش أفتح الكاميرا. تأكدي إنك سامحة للمتصفح يستخدم الكاميرا.');
+                closeCameraModal();
+            }
+        }
+
+        function closeCameraModal() {
+            const modal = document.getElementById('camera-modal');
+            modal.classList.add('hidden');
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+        }
+
+        function capturePhoto() {
+            const video  = document.getElementById('camera-feed');
+            const canvas = document.getElementById('camera-canvas');
+            if (!video.videoWidth) return; // stream not ready yet
+
+            canvas.width  = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            canvas.toBlob(blob => {
+                if (!blob) return;
+                const file = new File([blob], `camera_${Date.now()}.jpg`, { type: 'image/jpeg' });
+                useImageFile(file);
+                closeCameraModal();
+            }, 'image/jpeg', 0.92);
+        }
+
+        // ============================================================
+        // Select Garment Logic
+        // ============================================================
+        function selectGarment(element, type) {
+            // 🔥 التعديل هنا: تفريغ الملف المرفوع لو المستخدم اختار صورة جاهزة
+            if (type !== 'custom') {
+                globalOutfitFile = null; 
+            }
+
+            // حفظ لينك اللبس المختار
+            const imgEl = element.querySelector('img');
+            if (imgEl) {
+                globalOutfitUrl = imgEl.src;
+
+                // ← Auto-detect garment type في الخلفية
+                detectGarmentType(globalOutfitUrl).then(detected => {
+                    if (detected) showSuggestion(detected);
+                });
+            }
+
+            const items = document.querySelectorAll('.garment-item');
+            items.forEach(item => {
+                if (!item.classList.contains('border-dashed')) {
+                    item.classList.remove('border-brand-500', 'shadow-[0_0_15px_rgba(139,92,246,0.3)]', 'opacity-100');
+                    item.classList.add('border-transparent', 'opacity-70');
+                    const check = item.querySelector('div.absolute');
+                    if (check) check.remove();
+                }
+            });
+
+            element.classList.remove('border-transparent', 'opacity-70');
+            element.classList.add('border-brand-500', 'shadow-[0_0_15px_rgba(139,92,246,0.3)]', 'opacity-100');
+
+            const checkHTML = `
+                <div class="absolute top-2 right-2 w-5 h-5 bg-brand-500 rounded-full flex items-center justify-center z-10 fade-in">
+                    <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                </div>
+            `;
+            element.insertAdjacentHTML('afterbegin', checkHTML);
+
+            // إعادة ضبط الشاشة
+            document.getElementById('state-idle').classList.remove('hidden');
+            document.getElementById('image-container').classList.add('hidden', 'opacity-0');
+            document.getElementById('grid-view').classList.add('hidden');
+            document.getElementById('grid-view').classList.remove('grid');
+            document.getElementById('result-tools').classList.add('hidden');
+        }
+
+        // ============================================================
+        // Generate AI Try-On Logic (Real API Call)
+        // ============================================================
+        async function startAI() {
+    if (!globalPersonImageFile) {
+        alert("Please upload your photo first!");
+        return;
+    }
+    if (!globalOutfitUrl && !globalOutfitFile) {
+        alert("Please select an outfit to try on!");
+        return;
+    }
+
+    const btn = document.getElementById('generate-btn');
+    const originalBtnHTML = btn.innerHTML; // احفظ الـ HTML الأصلي للرجوع ليه
+    const idleState = document.getElementById('state-idle');
+    const imageContainer = document.getElementById('image-container');
+    const scanOverlay = document.getElementById('scan-overlay');
+    const tools = document.getElementById('result-tools');
+    const loadingText = document.getElementById('loading-text');
+    
+    const token = localStorage.getItem("token");
+    if (!token) {
+        alert("Session expired. Please login again.");
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = `<svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Applying Magic (Wait ~30s)...`;
+
+    idleState.classList.add('hidden');
+    imageContainer.classList.remove('hidden', 'opacity-0');
+    scanOverlay.classList.remove('hidden');
+    tools.classList.add('hidden');
+
+    // 🔥 هنا التعديل السحري اللي بيحل المشكلة:
+    // ── تحذير أخير لو في تعارض بين اللبس والنوع المختار ──
+    if (detectedClothType && detectedClothType !== globalClothType) {
+        const names = { upper: 'Upper Body', lower: 'Lower Body', overall: 'Full Outfit' };
+        const confirmed = confirm(
+            `⚠️ Garment type mismatch!\n\n` +
+            `Detected garment: ${names[detectedClothType] || detectedClothType}\n` +
+            `Selected type:    ${names[globalClothType]   || globalClothType}\n\n` +
+            `This may give poor results. Continue anyway?`
+        );
+        if (!confirmed) {
+            // رجّع الزرار لحالته الأصلية
+            const btn = document.getElementById('generate-btn');
+            btn.innerHTML = originalBtnHTML;
+            btn.disabled = false;
+            return;
+        }
+    }
+
+    const formData = new FormData();
+    formData.append("person_image", globalPersonImageFile);
+    formData.append("cloth_type", globalClothType); // upper | lower | overall
+    
+    if (globalOutfitFile) {
+        // لو اليوزر رفع لبس من جهازه، نبعت الفايل الحقيقي للباك إند
+        formData.append("outfit_file", globalOutfitFile);
+        
+    } else {
+        // لو اختار صورة جاهزة من الموقع، نبعت الرابط بتاعها
+        formData.append("outfit_url", globalOutfitUrl || "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab");
+    }
+
+    try {
+        loadingText.innerText = "Synthesizing fabric... Please wait";
+        
+        const response = await fetch("http://127.0.0.1:8000/generate-tryon-sync", {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${token}` },
+            body: formData
+        });
+
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.detail || "Server error");
+        }
+
+        document.getElementById('scan-overlay').classList.add('hidden');
+        
+        viewData[0].src = "http://127.0.0.1:8000" + data.result_url;
+        currentViewIndex = 0;
+        updateViewDisplay();
+
+        document.getElementById('result-tools').classList.remove('hidden');
+        
+        btn.disabled = false;
+        btn.innerHTML = `Try Another Outfit`;
+
+    } catch (error) {
+        console.error("AI Error:", error);
+        alert("Failed to start Try-On: " + error.message);
+        resetUI();
+    }
+}
+
+        
+
+        function resetUI() {
+            document.getElementById('scan-overlay').classList.add('hidden');
+            document.getElementById('state-idle').classList.remove('hidden');
+            document.getElementById('image-container').classList.add('hidden');
+            const btn = document.getElementById('generate-btn');
+            btn.disabled = false;
+            btn.innerHTML = `Apply Magic Try-On`;
+        }
+
+        // ============================================================
+        // View Navigation & Compare Tools (As is)
+        // ============================================================
+        function updateViewDisplay() {
+            const imgEl = document.getElementById('mirror-result');
+            const badgeEl = document.getElementById('view-badge');
+
+            imgEl.style.opacity = '0.5';
+            setTimeout(() => {
+                imgEl.src = viewData[currentViewIndex].src;
+                badgeEl.innerText = viewData[currentViewIndex].name;
+                imgEl.style.opacity = '1';
+            }, 150);
+        }
+
+        function nextView() {
+            currentViewIndex = (currentViewIndex + 1) % viewData.length;
+            updateViewDisplay();
+        }
+
+        function prevView() {
+            currentViewIndex = (currentViewIndex - 1 + viewData.length) % viewData.length;
+            updateViewDisplay();
+        }
+
+        function toggleCompare() {
+            isGridMode = !isGridMode;
+            const imageContainer = document.getElementById('image-container');
+            const gridView = document.getElementById('grid-view');
+
+            if (isGridMode) {
+                imageContainer.classList.add('hidden');
+                gridView.classList.remove('hidden');
+                gridView.classList.add('grid');
+            } else {
+                gridView.classList.add('hidden');
+                gridView.classList.remove('grid');
+                imageContainer.classList.remove('hidden');
+            }
+            updateCompareButtonUI();
+        }
+
+        function updateCompareButtonUI() {
+            const compareText = document.getElementById('compare-text');
+            const compareIcon = document.getElementById('compare-icon');
+
+            if (isGridMode) {
+                compareText.innerText = 'Single View';
+                compareIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>`;
+            } else {
+                compareText.innerText = 'Compare All Views';
+                compareIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>`;
+            }
+        }
+        // ============================================================
+        // Upload Custom Garment Logic (Upload Yours Button)
+        // ============================================================
+        const garmentCard = document.getElementById('upload-garment-card');
+        const garmentInput = document.getElementById('garment-file-input');
+
+        if (garmentCard && garmentInput) {
+            // 1. فتح اختيار الملفات عند الضغط على الكارت (ونتأكد إنه مش بيضغط على الـ input نفسه عشان ميعملش Loop)
+            garmentCard.addEventListener('click', (e) => {
+                if (e.target !== garmentInput) {
+                    garmentInput.click();
+                }
+            });
+
+            // 2. معالجة الصورة لما اليوزر يختارها
+            garmentInput.addEventListener('change', function handleGarmentUpload(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                globalOutfitFile = file;
+                // تحويل الصورة لرابط محلي مؤقت
+                const localImageUrl = URL.createObjectURL(file);
+
+                // ← Auto-detect من الـ file مباشرة
+                detectGarmentType(file).then(detected => {
+                    if (detected) showSuggestion(detected);
+                });
+
+                // تحديث شكل الكارت لعرض الصورة المرفوعة مكان الأيقونة
+                garmentCard.innerHTML = `
+                                     <img src="${localImageUrl}" class="w-full h-32 object-contain bg-white rounded-xl" alt="Uploaded Garment">
+                                     <input type="file" id="garment-file-input" accept="image/*" style="display: none;" /> `;
+
+                // إعادة ربط الـ input الجديد تحسباً لو اليوزر حب يغير الصورة تاني
+                const newInput = document.getElementById('garment-file-input');
+                newInput.addEventListener('change', handleGarmentUpload);
+
+                // استخدام دالتك الأصلية عشان تعمل Select للكارت وتحط علامة الصح الموف وتحدث المتغير globalOutfitUrl
+                selectGarment(garmentCard, 'custom');
+                
+            });
+        }
+        
+        document.addEventListener('keydown', function (event) {
+            const imageContainer = document.getElementById('image-container');
+            if (!imageContainer.classList.contains('hidden') && !imageContainer.classList.contains('opacity-0')) {
+                if (event.key === 'ArrowRight') nextView();
+                else if (event.key === 'ArrowLeft') prevView();
+            }
+              
+        });
+        // ============================================================
+        // Fetch User Profile Logic
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', async () => {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                // لو مفيش توكن، ممكن توجهه لصفحة اللوجين
+                // window.location.href = 'login.html';
+                document.getElementById('nav-username').textContent = "Guest";
+                document.getElementById('nav-role').textContent = "No Plan";
+                return;
+            }
+
+            try {
+                // بنكلم الباك إند اللي إنت عامله في main.py
+                const response = await fetch('http://127.0.0.1:8000/profile', {
+                    method: 'GET',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const userData = await response.json();
+                    
+                    // 1. تحديث الاسم
+                    document.getElementById('nav-username').textContent = userData.username;
+                    
+                    // 2. تحديث الخطة (Role)
+                    let displayRole = userData.role;
+                    if (displayRole === 'User') displayRole = 'Free Plan';
+                    else if (displayRole === 'Pro') displayRole = 'Pro Plan';
+                    document.getElementById('nav-role').textContent = displayRole;
+
+                    /// 3. تحديث الصورة
+                    // بنجيب الصورة المحفوظة في المتصفح (تأكد إن اسم الـ key مطابق للي موجود في صفحة الداشبورد)
+                    const savedAvatar = localStorage.getItem('vwear_avatar'); 
+
+                    if (savedAvatar) {
+                        // لو المستخدم رافع صورة ومحفوظة، اعرضها فوراً
+                        document.getElementById('nav-avatar').src = savedAvatar;
+                    } else {
+                        // لو مفيش صورة، اعمل Fallback لأول حرفين من اسمه
+                        const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.username)}&background=8b5cf6&color=fff&bold=true`;
+                        document.getElementById('nav-avatar').src = avatarUrl;
+                    }
+                }
+            } catch (error) {
+                console.error("Error fetching profile:", error);
+            }
+        });
+    </script>
+
+    <!-- Camera Capture Modal -->
+    <div id="camera-modal" class="hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-6 max-w-md w-full flex flex-col items-center gap-4">
+            <div class="w-full flex justify-between items-center">
+                <h3 class="text-lg font-bold text-gray-900">Position yourself in the frame</h3>
+                <button onclick="closeCameraModal()" class="text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
+            </div>
+
+            <!-- Video + green guide box overlay -->
+            <div class="relative w-full aspect-[3/4] bg-black rounded-2xl overflow-hidden">
+                <video id="camera-feed" class="w-full h-full object-cover" playsinline autoplay muted></video>
+
+                <!-- Green guide box: helps the user line up their whole body -->
+                <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
+                    <div class="w-[62%] h-[88%] border-4 border-green-400 rounded-2xl shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]"></div>
+                </div>
+
+                <p class="pointer-events-none absolute bottom-3 left-0 right-0 text-center text-white text-xs font-semibold drop-shadow">
+                    Stand back so your full body fits inside the green box
+                </p>
+            </div>
+
+            <canvas id="camera-canvas" class="hidden"></canvas>
+
+            <div class="flex gap-3 w-full">
+                <button onclick="closeCameraModal()"
+                    class="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 transition-colors">Cancel</button>
+                <button onclick="capturePhoto()"
+                    class="flex-1 py-3 rounded-xl bg-gradient-to-r from-brand-600 to-accent-500 text-white font-bold shadow-md hover:opacity-90 transition-opacity">Capture</button>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
