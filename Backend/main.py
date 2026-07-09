@@ -1170,6 +1170,7 @@ async def detect_garment(
         return {"cloth_type": "upper", "method": "default_fallback", "error": str(e)}
 
 
+
 # ============================================================
 # Size recommendation — purely informational for the user.
 # CatVTON never receives a "size" input, so this never touches
