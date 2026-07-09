@@ -452,6 +452,7 @@
         let globalOutfitFile = null;
         let globalClothType = 'upper'; // default
         let detectedClothType = null;  // اللي الـ AI اكتشفه
+        let detectionRequestId = 0;    // بيتزود مع كل detection جديد عشان نرفض أي رد قديم متأخر
 
         // ============================================================
         // Cloth Type Selector Logic
@@ -669,10 +670,25 @@
             if (imgEl) {
                 globalOutfitUrl = imgEl.src;
 
-                // ← Auto-detect garment type في الخلفية
-                detectGarmentType(globalOutfitUrl).then(detected => {
-                    if (detected) showSuggestion(detected);
-                });
+                // لو 'custom': الصورة دي اتكشفت فعلاً على الـ file الحقيقي في
+                // handleGarmentUpload — معادش داعي نكررها هنا على الـ blob URL
+                // (السيرفر مستحيل يقدر يفتحها، فكانت بترجع فشل كل مرة وتمسح
+                // نتيجة صح كانت لسه واصلة)
+                if (type !== 'custom') {
+                    const myRequestId = ++detectionRequestId;
+                    // ← Auto-detect garment type في الخلفية
+                    detectGarmentType(globalOutfitUrl).then(detected => {
+                        if (myRequestId !== detectionRequestId) return; // رد متأخر، اتجاهله
+                        if (detected) {
+                            showSuggestion(detected);
+                        } else {
+                            // فشل التصنيف (مثلاً الـ backend call فشل) — امسح أي
+                            // suggestion قديمة بدل ما تفضل عالقة على قيمة سابقة غلط
+                            detectedClothType = null;
+                            dismissSuggestion();
+                        }
+                    });
+                }
             }
 
             const items = document.querySelectorAll('.garment-item');
@@ -891,8 +907,15 @@
                 const localImageUrl = URL.createObjectURL(file);
 
                 // ← Auto-detect من الـ file مباشرة
+                const myRequestId = ++detectionRequestId;
                 detectGarmentType(file).then(detected => {
-                    if (detected) showSuggestion(detected);
+                    if (myRequestId !== detectionRequestId) return; // رد متأخر، اتجاهله
+                    if (detected) {
+                        showSuggestion(detected);
+                    } else {
+                        detectedClothType = null;
+                        dismissSuggestion();
+                    }
                 });
 
                 // تحديث شكل الكارت لعرض الصورة المرفوعة مكان الأيقونة
