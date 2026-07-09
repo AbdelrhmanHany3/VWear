@@ -24,8 +24,8 @@ from PIL import Image
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import bcrypt
-from model import model
-from job_queue import job_queue
+from Backend.model import model
+from Backend.job_queue import job_queue
 from dotenv import load_dotenv
 import os
 import asyncio
