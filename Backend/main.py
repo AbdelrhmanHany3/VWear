@@ -1013,12 +1013,6 @@ def get_history(user_data=Depends(verify_token), db: Session = Depends(get_db)):
 # then an OpenCV shape heuristic as a fallback
 # ============================================================
 
-
-# ============================================================
-# Garment type auto-detect: filename keywords first (free, instant),
-# then an OpenCV shape heuristic as a fallback
-# ============================================================
-
 @app.post("/detect-garment")
 async def detect_garment(
     cloth_image: Optional[UploadFile] = File(None),
@@ -1174,7 +1168,6 @@ async def detect_garment(
     except Exception as e:
         print(f"Detect Error: {e}")
         return {"cloth_type": "upper", "method": "default_fallback", "error": str(e)}
-
 
 
 # ============================================================
