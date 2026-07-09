@@ -132,8 +132,10 @@ clothing_table = Table(
     Column('CreatedAt', DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
 )
 
-metadata.create_all(bind=engine)
-
+try:
+    metadata.create_all(bind=engine)
+except Exception as e:
+    print(f"Tables might already exist: {e}")
 # ============================================================
 # 3. Security
 # ============================================================
