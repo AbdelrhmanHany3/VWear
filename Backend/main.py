@@ -429,7 +429,7 @@ async def signup(user: UserSignup, db: Session = Depends(get_db)):
         token = create_access_token(user.email)
         
         # إرسال الإيميل الحقيقي للمستخدم
-        verification_link = f"http://127.0.0.1:8000/verify-email/{verification_token}"
+        verification_link = f"https://vwear-ddbahcehdxhpgef4.spaincentral-01.azurewebsites.net/verify-email/{verification_token}"
         email_body = f"""
         <h3>Welcome to VWear!</h3>
         <p>Please click the link below to verify your email:</p>
@@ -541,7 +541,7 @@ def forgot_password(
  )
     db.commit()
 
-    reset_link = reset_link = f"http://127.0.0.1:8000/static/reset_password.html?token={token}"
+    reset_link = reset_link = f"https://vwear-ddbahcehdxhpgef4.spaincentral-01.azurewebsites.net/static/reset_password.html?token={token}"
     email_body = f"""
     <h3>VWear Password Reset</h3>
     <p>You requested to reset your password. Please click the link below to set a new password:</p>
@@ -787,10 +787,12 @@ def get_my_images(user_data=Depends(verify_token), db: Session = Depends(get_db)
 # 11. Health Check
 # ============================================================
 
-@app.get("/")
-def home():
-    return {"message": "VWear Backend Running Successfully"}
+from fastapi.responses import RedirectResponse
 
+@app.get("/")
+async def read_root():
+    # أول ما حد يفتح اللينك الرئيسي، هيتحول تلقائياً لصفحة الهوم
+    return RedirectResponse(url="/static/VWearHomeP.html")
 
 
 # ============================================================

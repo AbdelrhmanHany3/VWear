@@ -526,7 +526,7 @@ if (!token) {
     loadUser();
 
     // ── Real try-on count + recent history (replaces hardcoded numbers) ──
-    const API_BASE = 'http://127.0.0.1:8000';
+    const API_BASE = 'https://vwear-ddbahcehdxhpgef4.spaincentral-01.azurewebsites.net';
     const CLOTH_TYPE_LABELS = { upper: 'Upper', lower: 'Lower', overall: 'Overall' };
 
     async function loadTryOnStats() {
@@ -649,7 +649,7 @@ if (!token) {
 
         // Call backend if available
         try {
-            const res = await fetch('http://127.0.0.1:8000/reset-password', {
+            const res = await fetch('https://vwear-ddbahcehdxhpgef4.spaincentral-01.azurewebsites.net/reset-password', {
                 method: 'POST',
                 headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ current_password: current, new_password: newPass })
