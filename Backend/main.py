@@ -35,8 +35,21 @@ dotenv_path = os.path.join(base_dir, ".env")
 
 load_dotenv(dotenv_path)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# ============================================================
+# Persistent data directory — IMPORTANT
+# On Azure App Service (Linux), only /home is guaranteed to
+# survive restarts, worker recycles, and redeploys. Storing the
+# DB/uploads inside BASE_DIR (the code folder) causes data loss
+# whenever the app restarts or a new deploy happens.
+# Locally (outside Azure), this just resolves to a "data" folder
+# next to main.py, so nothing breaks in local dev.
+# ============================================================
+DATA_DIR = os.getenv("DATA_DIR", "/home/data" if os.path.isdir("/home") else os.path.join(BASE_DIR, "data"))
+os.makedirs(DATA_DIR, exist_ok=True)
+
 DATABASE_FILE = "vwear.db"
-DATABASE_PATH = os.path.join(BASE_DIR, DATABASE_FILE)
+DATABASE_PATH = os.path.join(DATA_DIR, DATABASE_FILE)
 SQLALCHEMY_DATABASE_URL = f"sqlite:///{DATABASE_PATH}"
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
@@ -162,7 +175,7 @@ security = HTTPBearer()
 # ============================================================
 # 4. Uploads Folder
 # ============================================================
-UPLOAD_DIR = "uploads"
+UPLOAD_DIR = os.path.join(DATA_DIR, "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # ============================================================
