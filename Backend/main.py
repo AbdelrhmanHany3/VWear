@@ -1008,6 +1008,48 @@ def get_history(user_data=Depends(verify_token), db: Session = Depends(get_db)):
     }
 
 
+@app.delete("/history/{item_id}")
+def delete_history_item(
+    item_id: int,
+    user_data=Depends(verify_token),
+    db: Session = Depends(get_db)
+):
+    """مسح صورة واحدة من الـ history — بتاعة صاحبها بس"""
+    email = user_data.get("sub")
+    db_user = db.execute(
+        select(users_table).where(users_table.c.Email == email)
+    ).fetchone()
+
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    item = db.execute(
+        select(generated_images_table)
+        .where(generated_images_table.c.Id == item_id)
+    ).fetchone()
+
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    # يمنع أي مستخدم من مسح صور مستخدم تاني
+    if item.UserId != db_user.Id:
+        raise HTTPException(status_code=403, detail="Not allowed to delete this item")
+
+    # مسح ملف الصورة من uploads لو موجود
+    if item.GeneratedImagePath:
+        image_file = item.GeneratedImagePath.replace("/uploads/", "")
+        full_path  = os.path.join(UPLOAD_DIR, image_file)
+        if os.path.exists(full_path):
+            os.remove(full_path)
+
+    db.execute(
+        generated_images_table.delete()
+        .where(generated_images_table.c.Id == item_id)
+    )
+    db.commit()
+    return {"message": "Item deleted successfully"}
+
+
 # ============================================================
 # Garment type auto-detect: filename keywords first (free, instant),
 # then an OpenCV shape heuristic as a fallback
