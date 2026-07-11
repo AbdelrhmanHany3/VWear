@@ -11,7 +11,18 @@ load_dotenv()
 # Config
 # ============================================================
 
-UPLOAD_DIR = "uploads"
+# ============================================================
+# Config
+# ============================================================
+# IMPORTANT: this MUST resolve to the exact same folder that
+# main.py serves at /uploads. On Azure App Service, only /home
+# survives restarts/redeploys, so we mirror main.py's logic here.
+# (Kept independent from main.py to avoid a circular import,
+# since main.py imports `model` from this file.)
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.getenv("DATA_DIR", "/home/data" if os.path.isdir("/home") else os.path.join(BASE_DIR, "data"))
+UPLOAD_DIR = os.path.join(DATA_DIR, "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # ============================================================
