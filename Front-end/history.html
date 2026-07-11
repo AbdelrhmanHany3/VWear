@@ -25,16 +25,12 @@
         </div>
     </nav>
 
-    <main class="max-w-screen-xl mx-auto px-6 py-10 pb-28">
+    <main class="max-w-screen-xl mx-auto px-6 py-10">
         <div class="flex items-end justify-between mb-6">
             <div>
                 <h1 class="text-2xl font-extrabold text-gray-900">Try-On History</h1>
                 <p id="history-subtitle" class="text-sm text-gray-500 mt-1">Loading…</p>
             </div>
-            <button id="select-toggle-btn" onclick="toggleSelectionMode()"
-                class="hidden bg-white border border-gray-200 text-gray-700 text-sm font-semibold px-4 py-2 rounded-full shadow-sm hover:bg-gray-50 transition">
-                Select
-            </button>
         </div>
 
         <!-- Loading state -->
@@ -65,41 +61,6 @@
         <div id="history-grid" class="hidden grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4"></div>
     </main>
 
-    <!-- Bottom selection action bar -->
-    <div id="selection-bar" class="hidden fixed bottom-0 left-0 right-0 z-30 bg-white/90 backdrop-blur-md border-t border-gray-200 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
-        <div class="max-w-screen-xl mx-auto px-6 py-4 flex items-center justify-between">
-            <span id="selection-count" class="text-sm font-semibold text-gray-700">0 selected</span>
-            <div class="flex items-center gap-3">
-                <button onclick="toggleSelectionMode()" class="text-sm font-semibold text-gray-500 hover:text-gray-700 px-4 py-2">
-                    Cancel
-                </button>
-                <button id="delete-selected-btn" onclick="openDeleteConfirm()" disabled
-                    class="bg-red-500 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-sm font-semibold px-5 py-2 rounded-full shadow-md hover:bg-red-600 transition">
-                    Delete Selected
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Delete confirmation modal -->
-    <div id="delete-confirm-modal" class="hidden fixed inset-0 z-40 flex items-center justify-center bg-black/40 px-6">
-        <div class="glass rounded-2xl max-w-sm w-full p-6 text-center shadow-xl">
-            <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
-                <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-            </div>
-            <p class="font-bold text-gray-900 mb-1">Delete <span id="delete-confirm-count">0</span> item(s)?</p>
-            <p class="text-sm text-gray-500 mb-5">This can't be undone.</p>
-            <div class="flex items-center gap-3">
-                <button onclick="closeDeleteConfirm()" class="flex-1 bg-gray-100 text-gray-700 font-semibold py-2.5 rounded-full text-sm hover:bg-gray-200 transition">
-                    Cancel
-                </button>
-                <button id="confirm-delete-btn" onclick="confirmDelete()" class="flex-1 bg-red-500 text-white font-semibold py-2.5 rounded-full text-sm hover:bg-red-600 transition">
-                    Delete
-                </button>
-            </div>
-        </div>
-    </div>
-
     <script>
         const API_BASE = 'https://vwear-ddbahcehdxhpgef4.spaincentral-01.azurewebsites.net';
         const token = localStorage.getItem('token');
@@ -110,149 +71,40 @@
 
         const CLOTH_TYPE_LABELS = { upper: 'Upper', lower: 'Lower', overall: 'Overall' };
 
-        let allItems = [];
-        let selectionMode = false;
-        let selectedIds = new Set();
-
         function formatDate(isoLike) {
             const d = new Date(isoLike);
             if (isNaN(d.getTime())) return '';
             return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
         }
 
-        function itemKey(item) {
-            return String(item.id ?? item.url);
-        }
-
         function renderCard(item) {
-            const label = CLOTH_TYPE_LABELS[item.cloth_type] || item.cloth_type || '';
-            const imageUrl = item.url.startsWith('http') ? item.url : `${API_BASE}${item.url}`;
-            const key = itemKey(item);
-            const isSelected = selectedIds.has(key);
+    const label = CLOTH_TYPE_LABELS[item.cloth_type] || item.cloth_type || '';
+    const imageUrl = item.url.startsWith('http') ? item.url : `${API_BASE}${item.url}`;
 
-            const selectionOverlay = selectionMode ? `
-                <div class="absolute top-2 left-2 z-10 w-6 h-6 rounded-full flex items-center justify-center border-2
-                            ${isSelected ? 'bg-purple-600 border-purple-600' : 'bg-white/80 border-gray-300'}">
-                    ${isSelected ? `<svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>` : ''}
-                </div>
-                <div class="absolute inset-0 z-10 ${isSelected ? 'bg-purple-600/20' : ''}"></div>
-            ` : '';
+    return `
+        <div class="glass rounded-2xl overflow-hidden group relative">
+            <!-- Download button — يظهر لما الماوس يعدي فوق الصورة -->
+            <button onclick="downloadImage('${imageUrl}', 'vwear-result-${item.id || Date.now()}.jpg')"
+                class="absolute top-2 right-2 z-10
+                       opacity-0 group-hover:opacity-100 transition-all duration-200
+                       bg-white/90 hover:bg-white text-gray-700 hover:text-purple-600
+                       rounded-full p-2 shadow-md backdrop-blur-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
+            </button>
 
-            const downloadBtn = !selectionMode ? `
-                <button onclick="event.stopPropagation(); downloadImage('${imageUrl}', 'vwear-result-${key}.jpg')"
-                    class="absolute top-2 right-2 z-10
-                           opacity-0 group-hover:opacity-100 transition-all duration-200
-                           bg-white/90 hover:bg-white text-gray-700 hover:text-purple-600
-                           rounded-full p-2 shadow-md backdrop-blur-sm">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-                    </svg>
-                </button>
-            ` : '';
-
-            return `
-                <div class="glass rounded-2xl overflow-hidden group relative cursor-pointer"
-                     onclick="${selectionMode ? `toggleItemSelected('${key}')` : ''}">
-                    ${selectionOverlay}
-                    ${downloadBtn}
-                    <div class="aspect-[3/4] bg-white/40">
-                        <img src="${imageUrl}" alt="Try-on result" class="w-full h-full object-cover" loading="lazy">
-                    </div>
-                    <div class="p-3 flex items-center justify-between">
-                        <span class="text-[11px] text-gray-500">${formatDate(item.created_at)}</span>
-                        ${label ? `<span class="text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">${label}</span>` : ''}
-                    </div>
-                </div>
-            `;
-        }
-
-        function renderGrid() {
-            const gridEl = document.getElementById('history-grid');
-            gridEl.innerHTML = allItems.map(renderCard).join('');
-        }
-
-        function toggleSelectionMode() {
-            selectionMode = !selectionMode;
-            selectedIds.clear();
-            document.getElementById('select-toggle-btn').textContent = selectionMode ? 'Cancel' : 'Select';
-            document.getElementById('selection-bar').classList.toggle('hidden', !selectionMode);
-            updateSelectionCount();
-            renderGrid();
-        }
-
-        function toggleItemSelected(key) {
-            if (selectedIds.has(key)) {
-                selectedIds.delete(key);
-            } else {
-                selectedIds.add(key);
-            }
-            updateSelectionCount();
-            renderGrid();
-        }
-
-        function updateSelectionCount() {
-            const n = selectedIds.size;
-            document.getElementById('selection-count').textContent = `${n} selected`;
-            document.getElementById('delete-selected-btn').disabled = n === 0;
-        }
-
-        function openDeleteConfirm() {
-            if (selectedIds.size === 0) return;
-            document.getElementById('delete-confirm-count').textContent = selectedIds.size;
-            document.getElementById('delete-confirm-modal').classList.remove('hidden');
-        }
-
-        function closeDeleteConfirm() {
-            document.getElementById('delete-confirm-modal').classList.add('hidden');
-        }
-
-        async function confirmDelete() {
-            const confirmBtn = document.getElementById('confirm-delete-btn');
-            confirmBtn.disabled = true;
-            confirmBtn.textContent = 'Deleting…';
-
-            const idsToDelete = Array.from(selectedIds);
-
-            const results = await Promise.allSettled(
-                idsToDelete.map(id =>
-                    fetch(`${API_BASE}/history/${id}`, {
-                        method: 'DELETE',
-                        headers: { Authorization: `Bearer ${token}` }
-                    }).then(res => {
-                        if (!res.ok) throw new Error(`Failed to delete ${id}`);
-                        return id;
-                    })
-                )
-            );
-
-            const deletedIds = new Set(
-                results.filter(r => r.status === 'fulfilled').map(r => r.value)
-            );
-            const failedCount = results.length - deletedIds.size;
-
-            allItems = allItems.filter(item => !deletedIds.has(itemKey(item)));
-
-            confirmBtn.disabled = false;
-            confirmBtn.textContent = 'Delete';
-            closeDeleteConfirm();
-            toggleSelectionMode(); // exits selection mode + clears selectedIds + re-renders
-
-            document.getElementById('history-subtitle').textContent =
-                `${allItems.length} try-on${allItems.length === 1 ? '' : 's'}`;
-
-            if (allItems.length === 0) {
-                document.getElementById('history-grid').classList.add('hidden');
-                document.getElementById('select-toggle-btn').classList.add('hidden');
-                const emptyEl = document.getElementById('empty-state');
-                emptyEl.classList.remove('hidden');
-                emptyEl.classList.add('flex');
-            }
-
-            if (failedCount > 0) {
-                alert(`${failedCount} item(s) couldn't be deleted. Please try again.`);
-            }
-        }
+            <div class="aspect-[3/4] bg-white/40">
+                <img src="${imageUrl}" alt="Try-on result" class="w-full h-full object-cover" loading="lazy">
+            </div>
+            <div class="p-3 flex items-center justify-between">
+                <span class="text-[11px] text-gray-500">${formatDate(item.created_at)}</span>
+                ${label ? `<span class="text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">${label}</span>` : ''}
+            </div>
+        </div>
+    `;
+}
 
         async function downloadImage(url, filename) {
             try {
@@ -321,11 +173,9 @@
                 }
 
                 subtitle.textContent = `${data.count} try-on${data.count === 1 ? '' : 's'}`;
-                allItems = data.items;
-                renderGrid();
+                gridEl.innerHTML = data.items.map(renderCard).join('');
                 gridEl.classList.remove('hidden');
                 gridEl.classList.add('grid');
-                document.getElementById('select-toggle-btn').classList.remove('hidden');
 
             } catch (err) {
                 loadingEl.classList.add('hidden');
